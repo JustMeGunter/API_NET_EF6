@@ -5,8 +5,8 @@ using System.Reflection;
 
 namespace Test1API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class testController : ControllerBase
     {
         private static List<test> testList = new List<test>
@@ -25,16 +25,22 @@ namespace Test1API.Controllers
             } 
         };
 
+        private readonly DataContext _context;
+        public testController(DataContext context)
+        {
+            _context = context;
+        }
+
         [HttpGet]
         public async Task<ActionResult<List<test>>> Get()
         {
-            return Ok(testList);
+            return Ok(await _context.test.ToListAsync());
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<test>> Get(int id)
         {
-            var test = testList.Find(t => t.Id == id);
+            var test = await _context.test.FindAsync(id);
             if (test == null)
                 return BadRequest("test not found");
             return Ok(test);
@@ -43,32 +49,35 @@ namespace Test1API.Controllers
         [HttpPost]
         public async Task<ActionResult<List<test>>> AddTest(test otest)
         {
-            testList.Add(otest);
-            return Ok(otest);
+            _context.test.Add(otest);
+            await _context.SaveChangesAsync();
+            return Ok(await _context.test.ToListAsync());
         }
 
         [HttpPut]
         public async Task<ActionResult<List<test>>> UpdateTest(test request)
         {
-            var test = testList.Find(t => t.Id == request.Id);
-            if (test == null)
+            var dbTest = await _context.test.FindAsync(request.Id);
+            if (dbTest == null)
                 return BadRequest("test not found");
             Type t = typeof(test);
             PropertyInfo[] arrProps = t.GetProperties();
             foreach (var prop in arrProps)
-                if (prop.GetValue(test) != prop.GetValue(request))
-                    prop.SetValue(test, prop.GetValue(request));
-            return Ok(test);
+                if (prop.GetValue(dbTest) != prop.GetValue(request))
+                    prop.SetValue(dbTest, prop.GetValue(request));
+            await _context.SaveChangesAsync();
+            return Ok(await _context.test.ToListAsync());
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult<test>> Get(int id)
+        public async Task<ActionResult<test>> DeleteTest(int id)
         {
-            var test = testList.Find(t => t.Id == id);
+            var test = await _context.test.FindAsync(id);
             if (test == null)
                 return BadRequest("test not found");
-            testList.Remove(test);
-            return Ok(testList);
+            _context.test.Remove(test);
+            await _context.SaveChangesAsync();
+            return Ok(await _context.test.ToListAsync());
         }
     }
 }
